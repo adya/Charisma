@@ -66,6 +66,37 @@ Bool IsBrotherhoodInitiate2Reserved = false
 ; This mostly addresses NPCs that are assigned to follow you during quests like Serana.
 Int CustomFollowersCount = 0
 
+; An array that holds up to 20 custom followers that can be supported by Leadership.
+CH_CustomFollowerTracker[] customFollowers = new CH_CustomFollowerTracker[20]
+
+Bool Function RegisterCustomFollower(CH_CustomFollowerTracker akFollower)
+    Int index = 0
+    While index < customFollowers.count && customFollowers[index] != None
+        index += 1
+    EndWhile
+
+    If index < customFollowers.count
+        customFollowers[index] = akFollower
+        OnFollowersCountChanged(true)
+        Return true
+    EndIf
+
+    Return false
+EndFunction
+
+Function UnregisterCustomFollower(CH_CustomFollowerTracker akFollower)
+    Int index = 0
+    While index < customFollowers.count && customFollowers[index] != akFollower
+        index += 1
+    EndWhile
+
+    If index < customFollowers.count
+        customFollowers[index] = None
+        OnFollowersCountChanged()
+        Return true
+    EndIf
+EndFunction
+
 ; Updates PlayerFollowerCount global variable to let the game know if we can still recruit people.
 ;
 ; This one is kind of an "event". It should be called whenever there are changes in the followers system.
@@ -76,7 +107,7 @@ Int CustomFollowersCount = 0
 ; If something else modifies PlayerFollowerCount it should be considered as incompatibility
 ; and corresponding script should be patched accordingly.
 ; Otherwise you'll end up unable to recruit potential followers even though Leadership allows you to.
-Function OnFollowersCountChanged()
+Function OnFollowersCountChanged(Bool makeRoom = false)
     If CanRecruitFollower()
         Debug.Trace("You can recruit additional followers")
         pPlayerFollowerCount.SetValueInt(0)
@@ -449,7 +480,6 @@ EndFunction
 Bool Function IsCompanionsFollowing()
     Return IsCompanionsReserved
 EndFunction
-
     
 ;;;;;;;;;;;;;;;;;;;; Animals Handling ;;;;;;;;;;;;;;;;;;;;;;;
     

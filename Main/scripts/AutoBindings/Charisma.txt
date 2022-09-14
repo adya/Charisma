@@ -1,0 +1,13 @@
+CH_InigoTracker InigoREF
+
+!CH_RemielTracker 0x33226 HLIORemi.esp
+
+# TDB:
+# CH_BenDoonTracker SKQBenACT4
+# CH_XelzazTracker BPUFXelzaz
+# CH_NereronTracker alexm_ActorNereronDresndus
+# CH_LucienTracker JRLucien
+# CH_KhajiitWillFollowTracker BIkhai
+# CH_KhajiitWillFollowTracker Nanak
+# CH_KhajiitWillFollowTracker Sariq
+# CH_KhajiitWillFollowTracker Makara

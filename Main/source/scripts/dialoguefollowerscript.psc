@@ -9,13 +9,13 @@ Faction Property pDismissedFollower Auto
 Faction Property pCurrentFollower Auto
 Faction Property CurrentHirelingFaction Auto
 
-Message Property  FollowerDismissMessage Auto
+Message Property FollowerDismissMessage Auto
 Message Property AnimalDismissMessage Auto
-Message Property  FollowerDismissMessageWedding Auto
-Message Property  FollowerDismissMessageCompanions Auto
-Message Property  FollowerDismissMessageCompanionsMale Auto
-Message Property  FollowerDismissMessageCompanionsFemale Auto
-Message Property  FollowerDismissMessageWait Auto
+Message Property FollowerDismissMessageWedding Auto
+Message Property FollowerDismissMessageCompanions Auto
+Message Property FollowerDismissMessageCompanionsMale Auto
+Message Property FollowerDismissMessageCompanionsFemale Auto
+Message Property FollowerDismissMessageWait Auto
 
 SetHirelingRehire Property HirelingRehireScript Auto
 
@@ -58,26 +58,31 @@ Bool IsBrotherhoodInitiate1Reserved = false
 ; See SetDarkBrotherhoodInitiate2Following below for more details.
 Bool IsBrotherhoodInitiate2Reserved = false
 
-; NOTE: This one is unused yet, probably will be utilized in compatibility stuff with custom followers.
-; This is potentially error-prone approach as it is easy to break by not balancing calls to increase and decrease this counter.
-; But it is more flexible than having individual flags for each custom follower.
-; Counter that tracks number of custom followers, 
-; that are not recruited through default followers mechanism (this script).
-; This mostly addresses NPCs that are assigned to follow you during quests like Serana.
-Int CustomFollowersCount = 0
-
 ; An array that holds up to 20 custom followers that can be supported by Leadership.
-CH_CustomFollowerTracker[] customFollowers = new CH_CustomFollowerTracker[20]
+CH_CustomFollowerTracker[] customFollowers
+
+Event OnInit()
+    customFollowers = new CH_CustomFollowerTracker[20]
+EndEvent
 
 Bool Function RegisterCustomFollower(CH_CustomFollowerTracker akFollower)
+    If !CanRecruitFollower()
+        Return false
+    EndIf
+
+    ; Ensure that we don't register same follower twice.
+    UnregisterCustomFollower(akFollower)
+
     Int index = 0
-    While index < customFollowers.count && customFollowers[index] != None
+    While index < customFollowers.Length && customFollowers[index] != None
         index += 1
     EndWhile
 
-    If index < customFollowers.count
+    If index < customFollowers.Length
+        Debug.Trace("CHARISMA: Adding " + akFollower + " to custom followers list")
         customFollowers[index] = akFollower
-        OnFollowersCountChanged(true)
+        CustomFollowersCount += 1
+        OnFollowersCountChanged()
         Return true
     EndIf
 
@@ -86,14 +91,19 @@ EndFunction
 
 Function UnregisterCustomFollower(CH_CustomFollowerTracker akFollower)
     Int index = 0
-    While index < customFollowers.count && customFollowers[index] != akFollower
+    While index < customFollowers.Length && customFollowers[index] != akFollower
         index += 1
     EndWhile
 
-    If index < customFollowers.count
+    If index < customFollowers.Length
+        Debug.Trace("CHARISMA: Removing " + akFollower + " from custom followers list")
         customFollowers[index] = None
+        CustomFollowersCount -= 1
+        ; Just a safeguard in case count got messed up. For example if someone randomly disabled custom followers without properlyy dismissing them.
+        If CustomFollowersCount < 0
+            CustomFollowersCount = 0
+        EndIf
         OnFollowersCountChanged()
-        Return true
     EndIf
 EndFunction
 
@@ -107,7 +117,7 @@ EndFunction
 ; If something else modifies PlayerFollowerCount it should be considered as incompatibility
 ; and corresponding script should be patched accordingly.
 ; Otherwise you'll end up unable to recruit potential followers even though Leadership allows you to.
-Function OnFollowersCountChanged(Bool makeRoom = false)
+Function OnFollowersCountChanged()
     If CanRecruitFollower()
         Debug.Trace("You can recruit additional followers")
         pPlayerFollowerCount.SetValueInt(0)
@@ -134,6 +144,34 @@ Bool Function CanRecruitFollower()
     Return CurrentFollowersCount < CH_MaximumFollowersCount.GetValueInt() && EmptyFollowerAlias() != None
 EndFunction
 
+; Counter that tracks number of custom followers, 
+; that are not recruited through default followers mechanism (this script).
+; These are registered using RegisterCustomFollower function.
+Int CustomFollowersCount = 0
+
+; Counts special followers that doesn't occupy aliases, but still take up a slot.
+Int Property SpecialFollowersCount Hidden
+    Int Function Get()
+        Int count = 0
+        If IsSeranaReserved
+            count += 1 
+        EndIf
+        If IsBrotherhoodInitiate1Reserved
+            count += 1 
+        EndIf
+        If IsBrotherhoodInitiate2Reserved
+            count += 1
+        EndIf
+        If IsCiceroReserved
+            count += 1
+        EndIf
+        If IsCompanionsReserved
+            count += 1
+        EndIf
+        Return count
+    EndFunction
+EndProperty
+
 ; Counts currently occupied aliases, including reserved by custom followers.
 Int Property CurrentFollowersCount Hidden
     Int Function Get()
@@ -151,23 +189,8 @@ Int Property CurrentFollowersCount Hidden
             count += 1
         EndIf
 
-        ; Treat custom follower reservations as additional phantom followers.
-        If IsSeranaReserved
-            count += 1 
-        EndIf
-        If IsBrotherhoodInitiate1Reserved
-            count += 1 
-        EndIf
-        If IsBrotherhoodInitiate2Reserved
-            count += 1
-        EndIf
-        If IsCiceroReserved
-            count += 1
-        EndIf
-        If IsCompanionsReserved
-            count += 1
-        EndIf
-        Return count
+       
+        Return count + SpecialFollowersCount + CustomFollowersCount
     EndFunction
 EndProperty
 
@@ -364,7 +387,6 @@ Function DismissSpecificFollowerAlias(ReferenceAlias Follower, Int iMessage = 0,
     EndIf
 EndFunction
 
-; Dismisses 
 Function DismissSpecificFollower(Actor FollowerActor, Int iMessage = 0, Int iSayLine = 1)
     Debug.Trace("DismissSpecificFollower: " + FollowerActor)
     ReferenceAlias Follower = FollowerAliasFor(FollowerActor)

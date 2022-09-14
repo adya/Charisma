@@ -586,7 +586,7 @@ endEvent
 function HireSteward(int houseIndex, Actor akNewSteward)
 	HouseStewards[houseIndex].ForceRefTo(akNewSteward)
 	(HouseQuests[houseIndex] as BYOHhouseScript).bHaveSteward = true
-	; dismiss the follower
+	; dismiss the follower. This doesn't need fix from USSEP as the fixed case is already accounted for.
 	DialogueFollower.DismissSpecificFollower(akNewSteward, 0, 0)
 endFunction
 
